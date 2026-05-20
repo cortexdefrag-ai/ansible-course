@@ -1,0 +1,57 @@
+---
+- name: Install and start Apache
+  hosts: all
+  remote_user: root
+  vars:
+    packages:
+      - apache2
+      - mysql-server
+
+    services:
+      - apache2
+      - mysql
+- name: Install Apache2 and MySQL Server with loop
+  hosts: webservers
+  become: yes
+
+  vars:
+    packages:
+      - apache2
+      - mysql-server
+
+    services:
+      - apache2
+      - mysql
+
+  tasks:
+    - name: Update APT cache
+      ansible.builtin.apt:
+        update_cache: yes
+        cache_valid_time: 3600
+
+    - name: Install packages
+      ansible.builtin.apt:
+        name: "{{ item }}"
+        state: present
+      loop: "{{ packages }}"
+
+    - name: Check if apache2 is installed
+      ansible.builtin.package_facts:
+        manager: auto
+
+    - name: Change Apache default index page
+      ansible.builtin.copy:
+        dest: /var/www/html/index.html
+        content: |
+          hello from ansible
+        owner: root
+        group: root
+        mode: '0644'
+      when: "'apache2' in ansible_facts.packages"
+
+    - name: Enable and start services
+      ansible.builtin.service:
+        name: "{{ item }}"
+        state: started
+        enabled: yes
+      loop: "{{ services }}"

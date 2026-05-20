@@ -1,0 +1,122 @@
+---
+- name: Install and start Apache
+  hosts: all
+  remote_user: root
+  vars:
+    packages:
+      - apache2
+      - mysql-server
+
+    services:
+      - apache2
+      - mysql
+- name: Install Apache2 and MySQL Server with loop
+  hosts: webservers
+  become: yes
+
+  vars:
+    packages:
+      - apache2
+      - mysql-server
+
+    services:
+      - apache2
+      - mysql
+
+  tasks:
+    - name: Update APT cache
+      ansible.builtin.apt:
+        update_cache: yes
+        cache_valid_time: 3600
+
+    - name: Install packages
+      ansible.builtin.apt:
+        name: "{{ item }}"
+        state: present
+      loop: "{{ packages }}"
+      when: ansible_host == "10.0.0.86" and "10.0.0.88"
+
+    - name: Check if apache2 is installed
+      ansible.builtin.package_facts:
+        manager: auto
+
+    - name: Change Apache default index page
+      ansible.builtin.copy:
+        dest: /var/www/html/index.html
+        content: |
+          hello from ansible host1
+        owner: root
+        group: root
+        mode: '0644'
+      when: 
+        - "'apache2' in ansible_facts.packages"
+        - ansible_host == "10.0.0.86"
+
+    - name: Change Apache default index page
+      ansible.builtin.copy:
+        dest: /var/www/html/index.html
+        content: |
+          hello from ansible host1
+        owner: root
+        group: root
+        mode: '0644'
+      when: 
+        - "'apache2' in ansible_facts.packages"
+        - ansible_host == "10.0.0.88" 
+
+    - name: Enable and start services
+      ansible.builtin.service:
+        name: "{{ item }}"
+        state: started
+        enabled: yes
+      loop: "{{ services }}"
+
+  vars:
+    target_ip: "10.0.0.89"
+
+    packages_to_remove:
+      - apache2
+
+    packages_to_install:
+      - git
+      - nginx
+      - cowsay
+
+  tasks:
+    - name: Update APT cache only on target VM
+      ansible.builtin.apt:
+        update_cache: yes
+        cache_valid_time: 3600
+      when: ansible_host == target_ip
+
+    - name: Uninstall Apache2 only on target VM
+      ansible.builtin.apt:
+        name: "{{ item }}"
+        state: absent
+        purge: yes
+      loop: "{{ packages_to_remove }}"
+      when: ansible_host == target_ip
+
+    - name: Install Git, Nginx and Cowsay only on target VM
+      ansible.builtin.apt:
+        name: "{{ item }}"
+        state: present
+      loop: "{{ packages_to_install }}"
+      when: ansible_host == target_ip
+
+    - name: Start and enable Nginx only on target VM
+      ansible.builtin.service:
+        name: nginx
+        state: started
+        enabled: yes
+      when: ansible_host == target_ip
+
+    - name: Change Nginx default index page only on target VM
+      ansible.builtin.copy:
+        dest: /var/www/html/index.nginx-debian.html
+        content: |
+          hello from ansible
+        owner: root
+        group: root
+        mode: '0644'
+      when: ansible_host == target_ip
