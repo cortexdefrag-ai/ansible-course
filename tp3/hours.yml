@@ -1,0 +1,37 @@
+---
+- name: Check day even/odd and before/after noon
+  hosts: all
+  gather_facts: yes
+
+  tasks:
+    - name: Display current date and time
+      ansible.builtin.debug:
+        msg: "Date: {{ ansible_facts['date_time']['date'] }} - Time: {{ ansible_facts['date_time']['time'] }}"
+
+    - name: Jour pair avant midi
+      ansible.builtin.debug:
+        msg: "Nous sommes un jour PAIR et il est AVANT midi"
+      when:
+        - ansible_facts['date_time']['day'] | int % 2 == 0
+        - ansible_facts['date_time']['hour'] | int < 12
+
+    - name: Jour pair après midi
+      ansible.builtin.debug:
+        msg: "Nous sommes un jour PAIR et il est APRÈS midi"
+      when:
+        - ansible_facts['date_time']['day'] | int % 2 == 0
+        - ansible_facts['date_time']['hour'] | int >= 12
+
+    - name: Jour impair avant midi
+      ansible.builtin.debug:
+        msg: "Nous sommes un jour IMPAIR et il est AVANT midi"
+      when:
+        - ansible_facts['date_time']['day'] | int % 2 != 0
+        - ansible_facts['date_time']['hour'] | int < 12
+
+    - name: Jour impair après midi
+      ansible.builtin.debug:
+        msg: "Nous sommes un jour IMPAIR et il est APRÈS midi"
+      when:
+        - ansible_facts['date_time']['day'] | int % 2 != 0
+        - ansible_facts['date_time']['hour'] | int >= 12

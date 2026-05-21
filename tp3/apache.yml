@@ -10,9 +10,6 @@
     services:
       - apache2
       - mysql
-- name: Install Apache2 and MySQL Server with loop
-  hosts: webservers
-  become: yes
 
   vars:
     packages:
@@ -48,9 +45,7 @@
         owner: root
         group: root
         mode: '0644'
-      when: 
-        - "'apache2' in ansible_facts.packages"
-        - ansible_host == "10.0.0.86"
+      when: ansible_host == "10.0.0.86"
 
     - name: Change Apache default index page
       ansible.builtin.copy:
@@ -70,6 +65,9 @@
         state: started
         enabled: yes
       loop: "{{ services }}"
+      when: 
+        - "'apache2' in ansible_facts.packages"
+        - ansible_host == "10.0.0.88" 
 
   vars:
     target_ip: "10.0.0.89"
@@ -87,7 +85,7 @@
       ansible.builtin.apt:
         update_cache: yes
         cache_valid_time: 3600
-      when: ansible_host == target_ip
+      when: ansible_host == "10.0.0.89"
 
     - name: Uninstall Apache2 only on target VM
       ansible.builtin.apt:
@@ -95,28 +93,52 @@
         state: absent
         purge: yes
       loop: "{{ packages_to_remove }}"
-      when: ansible_host == target_ip
+      when: ansible_host == "10.0.0.89"
 
     - name: Install Git, Nginx and Cowsay only on target VM
       ansible.builtin.apt:
         name: "{{ item }}"
         state: present
       loop: "{{ packages_to_install }}"
-      when: ansible_host == target_ip
+      when: ansible_host == "10.0.0.89"
 
     - name: Start and enable Nginx only on target VM
       ansible.builtin.service:
         name: nginx
         state: started
         enabled: yes
-      when: ansible_host == target_ip
+      when: ansible_host == "10.0.0.89"
 
     - name: Change Nginx default index page only on target VM
       ansible.builtin.copy:
         dest: /var/www/html/index.nginx-debian.html
         content: |
-          hello from ansible
+          hello from ansible host3
         owner: root
         group: root
         mode: '0644'
-      when: ansible_host == target_ip
+      when: ansible_host == "10.0.0.89"
+
+    - name: Start and enable nginx service
+      ansible.builtin.service:
+        name: nginx
+        state: started
+        enabled: yes
+      when: ansible_host == "10.0.0.89"
+  
+    - name: Gather installed package facts
+      ansible.builtin.package_facts:
+        manager: auto
+
+    - name: Check packages installation status
+      ansible.builtin.debug:
+        msg: "{{ item }} is installed"
+      loop: "{{ packages_to_install }}"
+      when: item in ansible_facts.packages
+
+    - name: Install UFW only on Ubuntu
+      ansible.builtin.apt:
+        name: ufw
+        state: present
+        update_cache: yes
+      when: ansible_distribution == "Ubuntu"
